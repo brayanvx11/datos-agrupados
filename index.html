@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis de Datos Agrupados</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #444;
+            text-align: center;
+        }
+        .input-section {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        @media (min-width: 600px) {
+            .input-section {
+                grid-template-columns: 2fr 1fr;
+            }
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        button {
+            padding: 12px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #exampleBtn {
+            background-color: #28a745;
+        }
+        #exampleBtn:hover {
+            background-color: #218838;
+        }
+        .results-summary {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        @media (min-width: 600px) {
+            .results-summary {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        .summary-column {
+            background: #fdfdfd;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+        }
+        .summary-column h3 {
+            margin-top: 0;
+            font-size: 1.2em;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .summary-column p {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.1em;
+            margin: 10px 0;
+        }
+        .summary-column p span:last-child {
+            font-weight: bold;
+        }
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tfoot tr {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .charts-section {
+             margin-top: 30px;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+         @media (min-width: 992px) {
+            .charts-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        .chart-container {
+            padding: 15px;
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 8px;
+        }
+        #infoMessage {
+            text-align: center;
+            padding: 10px;
+            background-color: #e7f3fe;
+            border: 1px solid #d0eaff;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Análisis Estadístico para Datos Agrupados</h1>
+
+        <div class="input-section">
+            <div>
+                <label for="dataInput"><strong>1. Pega tus datos aquí</strong> (separados por coma, espacio o nueva línea):</label>
+                <textarea id="dataInput" placeholder="Ej: 23, 25, 24, 23, 25, 27, 28, 26, ..."></textarea>
+            </div>
+            <div class="controls">
+                <strong>2. Opciones</strong>
+                <button id="calculateBtn">Calcular y Graficar</button>
+                <button id="exampleBtn">Usar Datos de Ejemplo</button>
+            </div>
+        </div>
+        
+        <div id="infoMessage" style="display:none;"></div>
+
+        <div id="results" style="display:none;">
+            <h2>Resultados</h2>
+
+            <div class="results-summary">
+                <div class="summary-column">
+                    <h3>Tendencia Central</h3>
+                    <p id="mean-result"></p>
+                    <p id="median-result"></p>
+                    <p id="mode-result"></p>
+                </div>
+                <div class="summary-column">
+                    <h3>Dispersión</h3>
+                    <p id="variance-result"></p>
+                    <p id="stdDev-result"></p>
+                    <p id="cv-result"></p>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <h2>Tabla de Distribución de Frecuencias</h2>
+                <table id="freqTable">
+                    <thead>
+                        <tr>
+                            <th>k</th>
+                            <th>Intervalo</th>
+                            <th>fi (Frec.)</th>
+                            <th>mi (Marca Clase)</th>
+                            <th>mi * fi</th>
+                            <th>mi²</th>
+                            <th>mi² * fi</th>
+                            <th>F (Frec. Acum.)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                    <tfoot></tfoot>
+                </table>
+            </div>
+
+            <div class="charts-section">
+                 <h2>Gráficas</h2>
+                 <div class="charts-grid">
+                    <div class="chart-container">
+                        <h3>Histograma de Frecuencias</h3>
+                        <canvas id="histogramChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Polígono de Frecuencias</h3>
+                        <canvas id="polygonChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Ojiva (Frecuencia Acumulada)</h3>
+                        <canvas id="ogiveChart"></canvas>
+                    </div>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- Selección de Elementos del DOM ---
+    const entradaDatos = document.getElementById('dataInput');
+    const btnCalcular = document.getElementById('calculateBtn');
+    const btnEjemplo = document.getElementById('exampleBtn');
+    const divResultados = document.getElementById('results');
+    const divMensajeInfo = document.getElementById('infoMessage');
+    let graficoHistograma, graficoPoligono, graficoOjiva;
+
+    // --- Conjuntos de Datos de Ejemplo ---
+    const conjuntosDeEjemplo = [
+        {
+            nombre: "Ejercicio (n=90)",
+            datos: "24, 24, 25, 23, 25, 27, 27, 28, 26, 28, 27, 28, 26, 27, 28, 27, 27, 28, 26, 28, 27, 28, 26, 27, 28, 27, 27, 28, 26, 28, 27, 28, 26, 27, 28, 27, 27, 28, 26, 28, 27, 28, 26, 27, 28, 30, 31, 29, 30, 31, 29, 30, 31, 29, 30, 31, 29, 30, 31, 29, 30, 31, 29, 30, 31, 29, 30, 31, 29, 30, 29, 31, 33, 34, 32, 33, 34, 32, 33, 34, 32, 33, 32, 36, 37, 35, 39, 40, 38, 42"
+        },
+        {
+            nombre: "Puntuaciones Examen (n=55)",
+            datos: "49, 38, 31, 27, 20, 41, 33, 28, 22, 48, 16, 37, 31, 26, 19, 41, 33, 27, 21, 46, 37, 45, 31, 26, 18, 39, 32, 27, 21, 47, 37, 30, 34, 25, 16, 39, 31, 27, 20, 45, 36, 30, 24, 29, 15, 44, 35, 30, 24, 43, 35, 29, 23, 43, 23"
+        }
+    ];
+
+    // --- Event Listeners (Manejadores de Eventos) ---
+    btnEjemplo.addEventListener('click', () => {
+        const indiceAleatorio = Math.floor(Math.random() * conjuntosDeEjemplo.length);
+        const ejemploSeleccionado = conjuntosDeEjemplo[indiceAleatorio];
+        entradaDatos.value = ejemploSeleccionado.datos;
+        // Notificar al usuario qué conjunto de datos se cargó
+        alert(`Se cargó el conjunto de datos: "${ejemploSeleccionado.nombre}"`);
+    });
+
+    btnCalcular.addEventListener('click', () => {
+        const datosCrudos = entradaDatos.value.trim();
+        if (!datosCrudos) {
+            alert('Por favor, introduce los datos.');
+            return;
+        }
+        
+        const datos = datosCrudos.split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+        if (datos.length === 0) {
+            alert('No se encontraron datos numéricos válidos.');
+            return;
+        }
+
+        calcularYMostrar(datos);
+    });
+
+    // --- Función Principal de Cálculo ---
+    function calcularYMostrar(datos) {
+        datos.sort((a, b) => a - b);
+        const n = datos.length;
+        const min = datos[0];
+        const max = datos[datos.length - 1];
+        const rango = max - min;
+        
+        let k;
+        let amplitud;
+        let intervalos = [];
+
+        // Regla de Sturges para todos los datos
+        k = Math.round(1 + 3.322 * Math.log10(n));
+        const sonEnteros = datos.every(num => Number.isInteger(num));
+        // Redondear amplitud hacia arriba solo si los datos son enteros
+        amplitud = sonEnteros ? Math.ceil(rango / k) : (rango / k);
+        
+        divMensajeInfo.textContent = `Total de datos (n): ${n}. Se calcularon ${k} intervalos con la Regla de Sturges. Amplitud: ${amplitud.toFixed(2)}.`;
+        let limiteInferiorActual = min;
+        for(let i = 0; i < k; i++) {
+            intervalos.push({ lower: limiteInferiorActual, upper: limiteInferiorActual + amplitud });
+            limiteInferiorActual += amplitud;
+        }
+        
+        // Inicializar la tabla de datos
+        let datosTabla = intervalos.map(int => ({
+            label: `[${typeof int.lower === 'number' ? int.lower.toFixed(2) : int.lower} - ${typeof int.upper === 'number' ? int.upper.toFixed(2) : int.upper})`,
+            lowerBound: int.lower,
+            upperBound: int.upper,
+            classMark: (int.lower + int.upper) / 2,
+            frequency: 0,
+            cumulativeFrequency: 0
+        }));
+
+        // Contar la frecuencia de cada intervalo
+        datos.forEach(d => {
+            for (let i = 0; i < datosTabla.length; i++) {
+                // Caso especial para el último intervalo para incluir el valor máximo
+                if (i === datosTabla.length - 1 && d >= datosTabla[i].lowerBound && d <= datosTabla[i].upperBound) {
+                    datosTabla[i].frequency++;
+                    break;
+                }
+                if (d >= datosTabla[i].lowerBound && d < datosTabla[i].upperBound) {
+                    datosTabla[i].frequency++;
+                    break;
+                }
+            }
+        });
+
+        // Calcular la frecuencia acumulada
+        let acumulado = 0;
+        datosTabla.forEach(fila => {
+            acumulado += fila.frequency;
+            fila.cumulativeFrequency = acumulado;
+        });
+
+        // --- Medidas de Tendencia Central ---
+        const sumaMiFi = datosTabla.reduce((acc, fila) => acc + fila.classMark * fila.frequency, 0);
+        const media = sumaMiFi / n;
+
+        const posicionMediana = n / 2;
+        const claseMediana = datosTabla.find(fila => fila.cumulativeFrequency >= posicionMediana);
+        const indiceClaseMediana = datosTabla.indexOf(claseMediana);
+        const F_anterior = indiceClaseMediana > 0 ? datosTabla[indiceClaseMediana - 1].cumulativeFrequency : 0;
+        const mediana = claseMediana.lowerBound + (((n / 2) - F_anterior) / claseMediana.frequency) * amplitud;
+
+        const claseModal = datosTabla.reduce((prev, current) => (prev.frequency > current.frequency) ? prev : current);
+        const indiceClaseModal = datosTabla.indexOf(claseModal);
+        const f_anterior = indiceClaseModal > 0 ? datosTabla[indiceClaseModal - 1].frequency : 0;
+        const f_posterior = indiceClaseModal < datosTabla.length - 1 ? datosTabla[indiceClaseModal + 1].frequency : 0;
+        const d1 = claseModal.frequency - f_anterior;
+        const d2 = claseModal.frequency - f_posterior;
+        const moda = claseModal.lowerBound + (d1 / (d1 + d2)) * amplitud;
+        
+        // --- Poblar datos extendidos de la tabla para cálculo de varianza ---
+        datosTabla.forEach(fila => {
+            fila.mi_fi = fila.classMark * fila.frequency;
+            fila.mi_sq = fila.classMark * fila.classMark;
+            fila.mi_sq_fi = fila.mi_sq * fila.frequency;
+        });
+
+        // --- Medidas de Dispersión ---
+        const sumaMi2Fi = datosTabla.reduce((acc, fila) => acc + fila.mi_sq_fi, 0);
+        const varianza = (sumaMi2Fi - (n * media * media)) / (n - 1);
+        const desviacionEstandar = Math.sqrt(varianza);
+        const coeficienteVariacion = (desviacionEstandar / media) * 100;
+        
+        // --- Mostrar Resultados en las Tarjetas ---
+        document.getElementById('mean-result').innerHTML = `<span>Media (X̄):</span> <span>${media.toFixed(2)}</span>`;
+        document.getElementById('median-result').innerHTML = `<span>Mediana (Me):</span> <span>${mediana.toFixed(2)}</span>`;
+        document.getElementById('mode-result').innerHTML = `<span>Moda (Mo):</span> <span>${moda.toFixed(2)}</span>`;
+        document.getElementById('variance-result').innerHTML = `<span>Varianza Muestral (s²):</span> <span>${varianza.toFixed(2)}</span>`;
+        document.getElementById('stdDev-result').innerHTML = `<span>Desviación Estándar (s):</span> <span>${desviacionEstandar.toFixed(2)}</span>`;
+        document.getElementById('cv-result').innerHTML = `<span>Coeficiente de Variación (CV):</span> <span>${coeficienteVariacion.toFixed(2)} %</span>`;
+        
+        // --- Dibujar Tabla de Frecuencias ---
+        const cuerpoTabla = document.getElementById('freqTable').getElementsByTagName('tbody')[0];
+        cuerpoTabla.innerHTML = ''; // Limpiar tabla anterior
+        datosTabla.forEach((fila, indice) => {
+            let tr = cuerpoTabla.insertRow();
+            tr.innerHTML = `
+                <td>${indice + 1}</td>
+                <td>${fila.label}</td>
+                <td>${fila.frequency}</td>
+                <td>${fila.classMark.toFixed(2)}</td>
+                <td>${fila.mi_fi.toFixed(2)}</td>
+                <td>${fila.mi_sq.toFixed(2)}</td>
+                <td>${fila.mi_sq_fi.toFixed(2)}</td>
+                <td>${fila.cumulativeFrequency}</td>
+            `;
+        });
+        
+        // --- Añadir Fila de Totales ---
+        const pieTabla = document.getElementById('freqTable').getElementsByTagName('tfoot')[0];
+        pieTabla.innerHTML = '';
+        const totalFi = datosTabla.reduce((acc, fila) => acc + fila.frequency, 0);
+        let filaTotal = pieTabla.insertRow();
+        filaTotal.innerHTML = `
+            <td colspan="2"><strong>Total</strong></td>
+            <td><strong>${totalFi}</strong></td>
+            <td></td>
+            <td><strong>${sumaMiFi.toFixed(2)}</strong></td>
+            <td></td>
+            <td><strong>${sumaMi2Fi.toFixed(2)}</strong></td>
+            <td></td>
+        `;
+
+        // --- Dibujar Gráficos ---
+        dibujarGraficos(datosTabla);
+
+        divResultados.style.display = 'block';
+        divMensajeInfo.style.display = 'block';
+    }
+
+    function dibujarGraficos(datosTabla) {
+        // Destruir gráficos existentes para evitar solapamientos
+        if (graficoHistograma) graficoHistograma.destroy();
+        if (graficoPoligono) graficoPoligono.destroy();
+        if (graficoOjiva) graficoOjiva.destroy();
+
+        // Histograma
+        const contextoHist = document.getElementById('histogramChart').getContext('2d');
+        graficoHistograma = new Chart(contextoHist, {
+            type: 'bar',
+            data: {
+                labels: datosTabla.map(d => d.label),
+                datasets: [{
+                    label: 'Frecuencia (fi)',
+                    data: datosTabla.map(d => d.frequency),
+                    backgroundColor: 'rgba(0, 123, 255, 0.5)',
+                    borderColor: 'rgba(0, 123, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: { 
+                scales: { 
+                    y: { 
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Frecuencia (fi)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Intervalos de Clase'
+                        }
+                    } 
+                } 
+            }
+        });
+
+        // Polígono de Frecuencias
+        const contextoPoly = document.getElementById('polygonChart').getContext('2d');
+        graficoPoligono = new Chart(contextoPoly, {
+            type: 'line',
+            data: {
+                labels: datosTabla.map(d => d.classMark.toFixed(2)),
+                datasets: [{
+                    label: 'Frecuencia',
+                    data: datosTabla.map(d => d.frequency),
+                    backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                    borderColor: 'rgba(220, 53, 69, 1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.1
+                }]
+            },
+            options: { 
+                scales: { 
+                    y: { 
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Frecuencia (fi)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Marca de Clase (mi)'
+                        }
+                    }
+                } 
+            }
+        });
+
+        // Ojiva
+        const contextoOjiva = document.getElementById('ogiveChart').getContext('2d');
+        const etiquetasOjiva = [datosTabla[0].lowerBound.toFixed(2), ...datosTabla.map(d => d.upperBound.toFixed(2))];
+        const datosOjiva = [0, ...datosTabla.map(d => d.cumulativeFrequency)];
+        graficoOjiva = new Chart(contextoOjiva, {
+            type: 'line',
+            data: {
+                labels: etiquetasOjiva,
+                datasets: [{
+                    label: 'Frecuencia Acumulada',
+                    data: datosOjiva,
+                    backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    borderWidth: 2,
+                    stepped: true, // Crea la apariencia de escalones
+                    fill: true
+                }]
+            },
+            options: { 
+                scales: { 
+                    y: { 
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Frecuencia Acumulada (F)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Límites de Clase'
+                        }
+                    }
+                } 
+            }
+        });
+    }
+</script>
+
+<footer style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccc;">
+    <p><strong>Estadística</strong></p>
+    <p>Prof. Brandon Altazar</p>
+    <p>Secuencia: 4NM42</p>
+    <div style="margin-top: 10px;">
+        <strong>Alumnos:</strong>
+        <ul style="list-style-type: none; padding: 0;">
+            <li>Castro Martinez Dulce Abigail</li>
+            <li>De la Cruz Vásquez Brayan</li>
+            <li>-</li>
+            <li>-</li>
+            <li>-</li>
+        </ul>
+    </div>
+</footer>
+
+</body>
+</html>
